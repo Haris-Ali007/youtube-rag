@@ -18,12 +18,13 @@ if __name__=="__main__":
     parser.add_argument("--url", type=str, help="Url for the youtube video")
     parser.add_argument("--index", type=str, help="Pinecone index for storing vector data")
     parser.add_argument("--model", type=str, nargs='?', default="gpt-3.5-turbo", help="LLM model name")
+    parser.add_argument("--transcript", type=str, help="Path to transcript file")
 
     args = parser.parse_args()
 
     load_dotenv()
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    transcription_file = 'transcription.txt'
+    transcription_file = args.transcript
     video_url = args.url
 
     ## loading model ##
