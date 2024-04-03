@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from pytube import YouTube
 import tempfile
 import whisper
+import argparse
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -13,19 +14,24 @@ from langchain_pinecone import PineconeVectorStore
 from langchain_core.runnables import RunnablePassthrough
 
 if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", type=str, help="Url for the youtube video")
+    parser.add_argument("--index", type=str, help="Pinecone index for storing vector data")
+    parser.add_argument("--model", type=str, nargs='?', default="gpt-3.5-turbo", help="LLM model name")
+
+    args = parser.parse_args()
+
     load_dotenv()
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     transcription_file = 'transcription.txt'
+    video_url = args.url
 
     ## loading model ##
-    model = ChatOpenAI(api_key=OPENAI_API_KEY, model="gpt-3.5-turbo")
+    model = ChatOpenAI(api_key=OPENAI_API_KEY, model=args.model)
     whisper_model = whisper.load_model("base")
     embeddings_model = OpenAIEmbeddings()
-
-
     ## loading text from the youtube video ##
     if not os.path.isfile(transcription_file): # set this on an if that will tell if it is for new video
-        video_url = "https://www.youtube.com/watch?v=-BjWCx-50Lc"
         yt_obj = YouTube(video_url)
         audio = yt_obj.streams.filter(only_audio=True).first()
         with tempfile.TemporaryDirectory() as fileObj:
@@ -54,7 +60,7 @@ if __name__=="__main__":
     vectore_store = PineconeVectorStore.from_documents(
                                     documents,
                                     embeddings_model,
-                                    index_name="demo-app"
+                                    index_name=args.index
     )
     parser = StrOutputParser()
     retriever = vectore_store.as_retriever()
@@ -63,5 +69,11 @@ if __name__=="__main__":
         | prompt | model | parser
     )
 
-    answer = chain.invoke("How to build a parser")
-    print(answer)
+    try:
+        while True:
+            question = input(">>> Enter your question \n")
+            answer = chain.invoke(question)
+            print(answer)
+            print('********************************')
+    except KeyboardInterrupt:
+        print("Program exited")
